@@ -104,6 +104,152 @@
 
 ---
 
+## フェーズ6: 外部サーバー（Render）への展開（優先度: 中）
+
+### 目標
+
+現在ローカルPC上で動作している RAG_met を Render.com の無料/有料プランで稼働させる。
+
+### 必要なファイルの整理
+
+| ファイル/ディレクトリ | Renderに必要か | 備考 |
+|---------------------|--------------|------|
+| `src/*.py` | ✅ 必須 | アプリ本体 |
+| `requirements.txt` | ✅ 必須 | 依存パッケージ |
+| `data/*.pdf` | ✅ 必須 | 取り込み元データ（約360MB） |
+| `data/jma_yougo/*.txt` | ✅ 必須 | 取り込み元データ |
+| `db/` | ⚠️ 条件付き | ローカルChromaDBデータ（後述） |
+| `.env` | ❌ 不要 | Renderの環境変数として設定 |
+| `venv/` | ❌ 不要 | Renderが自動インストール |
+
+### 主な技術課題
+
+#### 課題①: ChromaDB はローカルファイルDB（最重要）
+
+ChromaDB は `db/` ディレクトリにデータを保存する。
+Render の無料プランではデプロイのたびにディスクがリセットされる（エフェメラルFS）。
+
+**対策案（難易度順）:**
+
+| 案 | 方法 | コスト | 難易度 |
+|----|------|--------|--------|
+| A | Renderの有料ディスク（Persistent Disk）を使い `db/` を永続化 | 有料（$0.25/GB/月） | ★☆☆ |
+| B | 起動時に毎回 `ingest.py` を実行してDBを再構築 | 無料だが起動が遅い（数十分） | ★★☆ |
+| C | ChromaDBをクラウドDB（Pinecone / Qdrant Cloud）に置き換え | 無料プランあり | ★★★ |
+
+#### 課題②: 埋め込みモデル（multilingual-e5-small）のダウンロード
+
+初回起動時に HuggingFace から約400MBのモデルをダウンロードする。
+Render の無料プランでは RAMが512MB のため、PyTorchと同時起動すると不足する可能性がある。
+
+**対策案:**
+- Render の有料プラン（Standard: 512MB → 2GB RAM）を使用
+- または軽量な埋め込みAPI（OpenAI Embeddings / Cohere）に切り替え
+
+#### 課題③: PDFデータのデプロイ
+
+`data/` のPDFは合計約360MB。Gitリポジトリに含めるとリポジトリが肥大化する。
+
+**対策案:**
+- Git LFS（Large File Storage）を使用
+- または Render の起動スクリプトで外部ストレージ（S3 / Google Drive）からダウンロード
+
+#### 課題④: ローカルLLM（Bonsai等）は使用不可
+
+Render 上では Bonsai / Ollama 等のローカルLLMは動作しない。
+**Claude APIのみ使用可能**。
+
+#### 課題⑤: Webサーバーの本番対応
+
+現在は Python 標準ライブラリの `http.server` を使用しているが、
+本番環境では `gunicorn` 等の WSGI サーバーに変更が望ましい。
+
+### Render デプロイ手順（案）
+
+```
+1. GitHubリポジトリを作成（data/はGit LFS または除外）
+2. Render で Web Service を新規作成
+3. ビルドコマンド: pip install -r requirements.txt && python src/ingest.py
+4. 起動コマンド: python src/web_app.py
+5. 環境変数を Render のダッシュボードで設定:
+   - ANTHROPIC_API_KEY
+   - CLAUDE_MODEL
+   - RAG_MODE=hybrid
+   - CHROMA_DB_PATH=./db
+```
+
+### 推奨アプローチ（現実的な優先順）
+
+1. **まず**: Render有料プラン（$7/月〜）+ Persistent Disk で現構成のまま動かす
+2. **次に**: ChromaDB → Qdrant Cloud に移行してディスク依存をなくす
+3. **最終形**: 軽量な埋め込みAPI + クラウドVectorDB で完全サーバーレス化
+
+---
+
+## フェーズ7: Microsoft 365 / Copilot での活用（優先度: 低・調査中）
+
+### 目標
+
+会社の Microsoft 365 環境で RAG_met の機能（気象資料検索＋AI回答）を使えるか検討する。
+
+### Microsoft 365 × RAG の主な選択肢
+
+#### 選択肢①: Microsoft Copilot Studio（旧 Power Virtual Agents）
+
+Microsoft が提供するノーコード/ローコードのカスタムCopilot構築サービス。
+
+| 項目 | 内容 |
+|------|------|
+| 接続先 | SharePoint、OneDrive、外部Webサイト、カスタムAPI |
+| LLM | Azure OpenAI（GPT-4o） |
+| 料金 | Microsoft 365 Business/Enterprise ライセンスに含まれる場合あり |
+| Teams統合 | ✅ 対応（TeamsチャンネルにBotとして追加可能） |
+| 限界 | PDFを直接ベクトル化する柔軟性は低い。SharePointに置いたドキュメントを対象とする形が基本 |
+
+**活用イメージ:**
+1. 気象教科書PDFを SharePoint にアップロード
+2. Copilot Studio で SharePoint を知識ソースとして設定
+3. Teams のチャットから気象質問に回答
+
+#### 選択肢②: Azure AI Search + Azure OpenAI（本格RAG構築）
+
+現在の RAG_met と同等の機能を Microsoft のクラウドで再構築する方法。
+
+| 現在の構成 | Azure対応版 |
+|-----------|-----------|
+| ChromaDB（ローカル） | Azure AI Search（ベクトルDB） |
+| multilingual-e5-small | Azure OpenAI Embeddings |
+| Claude API | Azure OpenAI（GPT-4o） |
+| Python http.server | Azure App Service / Azure Functions |
+
+- 本格的だがコストと実装難易度が高い
+- M365 E3/E5ライセンス環境なら Azure クレジットが使える場合あり
+
+#### 選択肢③: Copilot for Microsoft 365 の拡張（プラグイン）
+
+Microsoft 365 Copilot（Word・Outlook内のCopilot）を外部APIで拡張する方法。
+
+- **Microsoft Graph コネクタ**で外部データ（気象資料）をインデックス化
+- Copilot がその知識を使って回答するよう設定
+- 要: Microsoft 365 Copilot ライセンス（別途 $30/ユーザー/月）
+
+### 現実的な評価
+
+| 選択肢 | 導入コスト | 技術難易度 | 社内利用のしやすさ |
+|--------|----------|----------|-----------------|
+| Copilot Studio + SharePoint | 低（ライセンス次第） | ★☆☆ | ✅ Teams統合で手軽 |
+| Azure AI Search + Azure OpenAI | 高 | ★★★ | △ IT部門の協力必要 |
+| M365 Copilot プラグイン | 高（ライセンス費） | ★★☆ | ✅ 既存Copilotに統合 |
+
+### 次のアクション（調査事項）
+
+- [ ] 社内の M365 ライセンス種別を確認（E3/E5/Business Premium等）
+- [ ] Copilot Studio が使用可能か確認
+- [ ] SharePoint への気象資料アップロードが許可されているか確認
+- [ ] IT部門・情報セキュリティポリシーの確認（外部API連携の可否）
+
+---
+
 ## スケジュール（目安）
 
 | フェーズ | 内容 | 目安 |

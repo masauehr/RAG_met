@@ -186,67 +186,57 @@ Render 上では Bonsai / Ollama 等のローカルLLMは動作しない。
 
 ---
 
-## フェーズ7: Microsoft 365 / Copilot での活用（優先度: 低・調査中）
+## フェーズ7: Microsoft 365 / Copilot での活用（優先度: 低・状況待ち）
 
-### 目標
+### 現状把握（2026-04時点）
 
-会社の Microsoft 365 環境で RAG_met の機能（気象資料検索＋AI回答）を使えるか検討する。
-
-### Microsoft 365 × RAG の主な選択肢
-
-#### 選択肢①: Microsoft Copilot Studio（旧 Power Virtual Agents）
-
-Microsoft が提供するノーコード/ローコードのカスタムCopilot構築サービス。
-
-| 項目 | 内容 |
+| 項目 | 状況 |
 |------|------|
-| 接続先 | SharePoint、OneDrive、外部Webサイト、カスタムAPI |
-| LLM | Azure OpenAI（GPT-4o） |
-| 料金 | Microsoft 365 Business/Enterprise ライセンスに含まれる場合あり |
-| Teams統合 | ✅ 対応（TeamsチャンネルにBotとして追加可能） |
-| 限界 | PDFを直接ベクトル化する柔軟性は低い。SharePointに置いたドキュメントを対象とする形が基本 |
+| Copilot Studio ライセンス | 社内の特定部署のみ保有。自部署への展開は未定 |
+| デジタル庁 GenAI 導入 | 政府横断的な生成AI環境の整備が進行中。導入後は全庁的な利用が見込まれる |
+| 短期での自部署利用 | ライセンスがないため、現時点では Render 経由（フェーズ6）が現実的 |
 
-**活用イメージ:**
-1. 気象教科書PDFを SharePoint にアップロード
+### 短期: Copilot Studio ライセンス保有部署との連携（要調整）
+
+Copilot Studio を導入済みの部署に協力を依頼し、気象チャットボットを試験運用する方法。
+
+**実装イメージ:**
+1. 気象教科書PDFを SharePoint の共有フォルダにアップロード
 2. Copilot Studio で SharePoint を知識ソースとして設定
 3. Teams のチャットから気象質問に回答
 
-#### 選択肢②: Azure AI Search + Azure OpenAI（本格RAG構築）
+**前提条件:**
+- 当該部署との調整・許可
+- 気象教科書PDFを SharePoint にアップロードできる権限
+- セキュリティポリシー上の問題がないこと
 
-現在の RAG_met と同等の機能を Microsoft のクラウドで再構築する方法。
+### 中長期: デジタル庁 GenAI 環境導入後の選択肢
 
-| 現在の構成 | Azure対応版 |
-|-----------|-----------|
-| ChromaDB（ローカル） | Azure AI Search（ベクトルDB） |
-| multilingual-e5-small | Azure OpenAI Embeddings |
-| Claude API | Azure OpenAI（GPT-4o） |
-| Python http.server | Azure App Service / Azure Functions |
+政府・自治体向けの生成AI基盤（ガバメントクラウド上の GenAI サービス等）が整備された場合、
+以下のような形での活用が想定される。詳細は導入内容が明らかになってから検討する。
 
-- 本格的だがコストと実装難易度が高い
-- M365 E3/E5ライセンス環境なら Azure クレジットが使える場合あり
+| 想定シナリオ | 内容 |
+|------------|------|
+| 政府共通 GenAI サービス経由 | 提供されるAPIやチャット基盤に気象資料を連携 |
+| Copilot Studio ライセンスの全庁展開 | 自部署でも独自のCopilotを構築可能になる |
+| Azure OpenAI Government | セキュアな政府向けクラウドで RAG を本格構築 |
 
-#### 選択肢③: Copilot for Microsoft 365 の拡張（プラグイン）
+### 参考: 現行RAG_metとCopilot Studio の機能比較
 
-Microsoft 365 Copilot（Word・Outlook内のCopilot）を外部APIで拡張する方法。
+| 項目 | RAG_met（現行） | Copilot Studio |
+|------|---------------|---------------|
+| LLM | Claude API / ローカルLLM | Azure OpenAI（GPT-4o） |
+| ベクトルDB | ChromaDB（ローカル） | SharePointインデックス（自動） |
+| カスタマイズ性 | ✅ 高い | △ ノーコード範囲に限定 |
+| 導入コスト | APIキー代のみ | M365ライセンス要 |
+| Teams統合 | ❌ なし | ✅ ネイティブ対応 |
+| セキュリティ管理 | 自己管理 | Microsoft 管理 |
 
-- **Microsoft Graph コネクタ**で外部データ（気象資料）をインデックス化
-- Copilot がその知識を使って回答するよう設定
-- 要: Microsoft 365 Copilot ライセンス（別途 $30/ユーザー/月）
+### アクション方針
 
-### 現実的な評価
-
-| 選択肢 | 導入コスト | 技術難易度 | 社内利用のしやすさ |
-|--------|----------|----------|-----------------|
-| Copilot Studio + SharePoint | 低（ライセンス次第） | ★☆☆ | ✅ Teams統合で手軽 |
-| Azure AI Search + Azure OpenAI | 高 | ★★★ | △ IT部門の協力必要 |
-| M365 Copilot プラグイン | 高（ライセンス費） | ★★☆ | ✅ 既存Copilotに統合 |
-
-### 次のアクション（調査事項）
-
-- [ ] 社内の M365 ライセンス種別を確認（E3/E5/Business Premium等）
-- [ ] Copilot Studio が使用可能か確認
-- [ ] SharePoint への気象資料アップロードが許可されているか確認
-- [ ] IT部門・情報セキュリティポリシーの確認（外部API連携の可否）
+- **今すぐ**: フェーズ6（Render展開）を優先して進める
+- **機会があれば**: Copilot Studio 保有部署に相談・試験利用
+- **GenAI 環境整備後**: 改めて導入方法を検討する（現時点では計画しない）
 
 ---
 

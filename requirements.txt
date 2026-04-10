@@ -1,0 +1,20 @@
+# Claude API クライアント
+anthropic>=0.40.0
+
+# RAGフレームワーク
+langchain>=0.3.0
+langchain-community>=0.3.0
+langchain-anthropic>=0.3.0
+
+# ベクトルDB（ローカル）
+chromadb>=0.5.0
+
+# 埋め込みモデル（ローカル使用）
+sentence-transformers>=3.0.0
+
+# ドキュメント読み込み
+pypdf>=4.0.0
+unstructured>=0.14.0
+
+# 環境変数管理
+python-dotenv>=1.0.0

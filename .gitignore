@@ -1,0 +1,19 @@
+# 環境変数（APIキー等）
+.env
+
+# ベクトルDB（大容量のため除外）
+db/
+
+# Python仮想環境
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# IDEの設定
+.vscode/
+.idea/

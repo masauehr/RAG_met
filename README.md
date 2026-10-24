@@ -284,3 +284,9 @@ embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 - [LangChain ドキュメント](https://python.langchain.com/)
 - [ChromaDB ドキュメント](https://docs.trychroma.com/)
 - [気象庁予報用語](https://www.jma.go.jp/jma/kishou/know/yougo_hp/sakuin.html)
+
+## 更新履歴（セキュリティ・依存更新）
+
+| 日付 | 内容 |
+|------|------|
+| 2026-10-24 | 実行環境（venv）の依存パッケージを脆弱性点検に基づき更新（langchain 系・pypdf・aiohttp・nltk・transformers・urllib3 など）。import と依存整合（pip check）を確認。実際の質問応答での動作確認は未実施。リポジトリのコード変更なし。週次の自動点検は別の非公開プロジェクトで管理している。 |

@@ -14,7 +14,6 @@ sentence-transformers>=3.0.0
 
 # ドキュメント読み込み
 pypdf>=4.0.0
-unstructured>=0.14.0
 
 # 環境変数管理
 python-dotenv>=1.0.0
